@@ -5,11 +5,11 @@
 #include <sstream>
 
 
-std::vector<std::vector<int>> readMatrix(const std::string& filename, int& rows, int& cols) {
+std::vector<std::vector<int>> readMatrix(const std::string& filename, int& rows, int& cols) 
+{
     std::ifstream file(filename);
-    if (!file.is_open()) {
+    if (!file.is_open())
         throw std::runtime_error("Cannot open file " + filename);
-    }
 
     std::vector<std::vector<int>> matrix;
     rows = cols = 0;
@@ -79,23 +79,38 @@ std::vector<std::vector<int>> multiplyMatrices(const std::vector<std::vector<int
 }
 
 
+void writeMatrix(const std::string& filename, const std::vector<std::vector<int>>& matrix) 
+{
+    std::ofstream file(filename);
+    if (!file.is_open())
+        throw std::runtime_error("Cannot open file for writing: " + filename);
+    
+    for (const auto& row : matrix) 
+    {
+        for (int val : row)
+            file << val << " ";
+        file << "\n";
+    }
+    file.close();
+}
+
+
 int main()
 {
+    int rowsA, colsA, rowsB, colsB;
     std::string fileA = "../Matrix1.txt";
     std::string fileB = "../Matrix2.txt";
-    int rowsA, colsA, rowsB, colsB;
+    std::string resultFile = "../result.txt";
+    
     auto matrixA = readMatrix(fileA, rowsA, colsA);
     auto matrixB = readMatrix(fileB, rowsB, colsB);
 
+    if (colsA != rowsB)
+        throw std::runtime_error("Matrices cant ne multiplied colsA != colsB");
+
     auto result = multiplyMatrices(matrixA, matrixB, rowsA, colsA, colsB);
 
-    for (int i = 0; i < rowsA; i++)
-    {
-        for (int j = 0; j < colsB; j++)
-        {
-            std::cout << result[i][j] << " ";
-        }
-        std::cout << std::endl;
-    }    
+    writeMatrix(resultFile, result);
+    
     return 0;
 }
