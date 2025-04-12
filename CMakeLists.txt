@@ -1,3 +1,3 @@
 
 
-add_executable(lab1 main.cc qw.txt)
+add_executable(lab1 main.cc)
