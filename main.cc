@@ -14,40 +14,32 @@ std::vector<std::vector<int>> readMatrix(const std::string& filename, int& rows,
 
     std::vector<std::vector<int>> matrix;
     rows = cols = 0;
-    std::vector<int> row;
+    std::string line;
+    bool has_data = false;
 
-    while (file.good()) 
+    while (std::getline(file, line)) 
     {
-        char c = file.get();
-        if (!file.good()) 
+        std::stringstream ss(line);
+        std::vector<int> row;
+        int value;
+
+        while (ss >> value) 
         {
-            if (!row.empty()) 
-            {
-                // last line
-                matrix.push_back(row);
-                cols = std::max(cols, static_cast<int>(row.size()));
-                rows++;
-            }
-            break;
+            row.push_back(value);
+            has_data = true;
         }
 
-        if (std::isdigit(c))
-            row.push_back(c - '0');
-        else if (c == '\n') 
+        if (!row.empty()) 
         {
-            if (!row.empty()) 
-            {
-                matrix.push_back(row);
-                cols = std::max(cols, static_cast<int>(row.size()));
-                rows++;
-                row.clear();
-            }
+            matrix.push_back(row);
+            cols = std::max(cols, static_cast<int>(row.size()));
+            ++rows;
         }
     }
 
     file.close();
-    if (rows == 0)
-        throw std::runtime_error("File " + filename + " is empty");
+    if (!has_data || rows == 0)
+        throw std::runtime_error("File " + filename + " is empty or contains no valid data");
 
     for (int i = 0; i < rows; ++i) 
     {
