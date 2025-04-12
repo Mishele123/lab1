@@ -60,6 +60,25 @@ std::vector<std::vector<int>> readMatrix(const std::string& filename, int& rows,
 }
 
 
+std::vector<std::vector<int>> multiplyMatrices(const std::vector<std::vector<int>>& A,
+    const std::vector<std::vector<int>>& B, const int rowsA, const int colsA, const int colsB)
+{
+    std::vector<std::vector<int>> result(rowsA, std::vector<int>(colsB, 0));
+    for (int i = 0; i < rowsA; i++)
+    {
+        for (int j = 0; j < colsB; j++)
+        {
+            for (int k = 0; k < colsA; k++)
+            {
+                result[i][j] += A[i][k] * B[k][j];
+            }
+            
+        }
+    }
+    return result;
+}
+
+
 int main()
 {
     std::string fileA = "../Matrix1.txt";
@@ -67,7 +86,16 @@ int main()
     int rowsA, colsA, rowsB, colsB;
     auto matrixA = readMatrix(fileA, rowsA, colsA);
     auto matrixB = readMatrix(fileB, rowsB, colsB);
-    
 
+    auto result = multiplyMatrices(matrixA, matrixB, rowsA, colsA, colsB);
+
+    for (int i = 0; i < rowsA; i++)
+    {
+        for (int j = 0; j < colsB; j++)
+        {
+            std::cout << result[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }    
     return 0;
 }
