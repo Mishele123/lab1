@@ -3,6 +3,7 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <chrono>
 
 
 std::vector<std::vector<int>> readMatrix(const std::string& filename, int& rows, int& cols) 
@@ -97,20 +98,34 @@ void writeMatrix(const std::string& filename, const std::vector<std::vector<int>
 
 int main()
 {
-    int rowsA, colsA, rowsB, colsB;
-    std::string fileA = "../Matrix1.txt";
-    std::string fileB = "../Matrix2.txt";
-    std::string resultFile = "../result.txt";
-    
-    auto matrixA = readMatrix(fileA, rowsA, colsA);
-    auto matrixB = readMatrix(fileB, rowsB, colsB);
+    try
+    {
+        int rowsA, colsA, rowsB, colsB;
+        std::string fileA = "../../Matrix1.txt";
+        std::string fileB = "../../Matrix2.txt";
+        std::string resultFile = "../../result.txt";
+        
+        auto matrixA = readMatrix(fileA, rowsA, colsA);
+        auto matrixB = readMatrix(fileB, rowsB, colsB);
 
-    if (colsA != rowsB)
-        throw std::runtime_error("Matrices cant ne multiplied colsA != colsB");
+        if (colsA != rowsB)
+            throw std::runtime_error("Matrices cant ne multiplied colsA != colsB");
+        
+        auto start = std::chrono::high_resolution_clock::now();
+        auto result = multiplyMatrices(matrixA, matrixB, rowsA, colsA, colsB);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        
+        writeMatrix(resultFile, result);
 
-    auto result = multiplyMatrices(matrixA, matrixB, rowsA, colsA, colsB);
-
-    writeMatrix(resultFile, result);
-    
+        std::cout << "Lead time: " << duration << std::endl;
+        std::cout << "Task volume: " << rowsA << "*" << colsB << std::endl;
+        std::cout << "The result is written to the file: " << resultFile << std::endl;
+    }
+    catch(const std::exception& ex)
+    {
+        std::cerr << "Error:" << ex.what() << std::endl;
+        return -1; 
+    }
     return 0;
 }
