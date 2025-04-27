@@ -1,63 +1,60 @@
-
 #include <iostream>
 #include <vector>
 #include <fstream>
 #include <sstream>
 #include <chrono>
+#include <stdexcept>
+#include <string>
 
 
-std::vector<std::vector<size_t>> readMatrix(const std::string& filename, size_t& rows, size_t& cols) 
+
+std::vector<std::vector<float>> readMatrix(const std::string& filename, size_t& rows, size_t& cols) 
 {
     std::ifstream file(filename);
     if (!file.is_open())
-        throw std::runtime_error("Cannot open file " + filename);
+        throw std::runtime_error("Cannot open file: " + filename);
 
-    std::vector<std::vector<size_t>> matrix;
-    rows = cols = 0;
+    std::vector<std::vector<float>> matrix;
+    rows = 0;
     std::string line;
-    bool has_data = false;
 
     while (std::getline(file, line)) 
     {
         std::stringstream ss(line);
-        std::vector<size_t> row;
-        size_t value;
+        std::vector<float> row;
+        float value;
 
         while (ss >> value) 
         {
             row.push_back(value);
-            has_data = true;
         }
 
         if (!row.empty()) 
         {
             matrix.push_back(row);
-            cols = std::max(cols, static_cast<size_t>(row.size()));
+            cols = std::max(cols, row.size());
             rows++;
         }
     }
 
     file.close();
-    if (!has_data || rows == 0)
-        throw std::runtime_error("File " + filename + " is empty or contains no valid data");
 
-    for (size_t i = 0; i < rows; ++i) 
+    if (rows == 0)
+        throw std::runtime_error("File is empty or contains no valid data");
+
+    for (auto& row : matrix) 
     {
-        while (matrix[i].size() < cols) 
-        {
-            matrix[i].push_back(0);
-        }
+        row.resize(cols, 0.0f);
     }
 
     return matrix;
 }
 
 
-std::vector<std::vector<size_t>> multiplyMatrices(const std::vector<std::vector<size_t>>& A,
-    const std::vector<std::vector<size_t>>& B, const size_t rowsA, const size_t colsA, 
-    const size_t colsB)
+std::vector<std::vector<float>> multiplyMatrices(const std::vector<std::vector<float>>& A,
+    const std::vector<std::vector<float>>& B, size_t rowsA, size_t colsA, size_t colsB)
 {
-    std::vector<std::vector<size_t>> result(rowsA, std::vector<size_t>(colsB, 0));
+    std::vector<std::vector<float>> result(rowsA, std::vector<float>(colsB, 0.0f));
     for (size_t i = 0; i < rowsA; i++)
     {
         for (size_t j = 0; j < colsB; j++)
@@ -66,22 +63,21 @@ std::vector<std::vector<size_t>> multiplyMatrices(const std::vector<std::vector<
             {
                 result[i][j] += A[i][k] * B[k][j];
             }
-            
         }
     }
     return result;
 }
 
 
-void writeMatrix(const std::string& filename, const std::vector<std::vector<size_t>>& matrix) 
+void writeMatrix(const std::string& filename, const std::vector<std::vector<float>>& matrix) 
 {
     std::ofstream file(filename);
     if (!file.is_open())
         throw std::runtime_error("Cannot open file for writing: " + filename);
-    
+
     for (const auto& row : matrix) 
     {
-        for (size_t val : row)
+        for (float val : row)
             file << val << " ";
         file << "\n";
     }
@@ -93,31 +89,53 @@ int main()
 {
     try
     {
-        size_t rowsA, colsA, rowsB, colsB;
-        std::string fileA = "../../Matrix1.txt";
-        std::string fileB = "../../Matrix2.txt";
-        std::string resultFile = "../../result.txt";
-        
-        auto matrixA = readMatrix(fileA, rowsA, colsA);
-        auto matrixB = readMatrix(fileB, rowsB, colsB);
+        long total_time = 0;
+        size_t rowsA, colsA = 0, rowsB, colsB = 0;
 
-        if (colsA != rowsB)
-            throw std::runtime_error("Matrices cant ne multiplied colsA != colsB");
-        
-        auto start = std::chrono::high_resolution_clock::now();
-        auto result = multiplyMatrices(matrixA, matrixB, rowsA, colsA, colsB);
-        auto end = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
-        
-        writeMatrix(resultFile, result);
+        std::vector<std::pair<std::string, std::string>> files = {
+            {"../../Matrix_1/matrix1_10.txt", "../../Matrix_2/matrix2_10.txt"},
+            {"../../Matrix_1/matrix1_20.txt", "../../Matrix_2/matrix2_20.txt"},
+            {"../../Matrix_1/matrix1_30.txt", "../../Matrix_2/matrix2_30.txt"},
+            {"../../Matrix_1/matrix1_40.txt", "../../Matrix_2/matrix2_40.txt"},
+            {"../../Matrix_1/matrix1_50.txt", "../../Matrix_2/matrix2_50.txt"},
+            {"../../Matrix_1/matrix1_60.txt", "../../Matrix_2/matrix2_60.txt"},
+            {"../../Matrix_1/matrix1_70.txt", "../../Matrix_2/matrix2_70.txt"},
+            {"../../Matrix_1/matrix1_80.txt", "../../Matrix_2/matrix2_80.txt"},
+            {"../../Matrix_1/matrix1_90.txt", "../../Matrix_2/matrix2_90.txt"},
+            {"../../Matrix_1/matrix1_100.txt", "../../Matrix_2/matrix2_100.txt"},
+            {"../../Matrix_1/matrix1_1000.txt", "../../Matrix_2/matrix2_1000.txt"}
+        };
 
-        std::cout << "Lead time: " << duration << std::endl;
-        std::cout << "Task volume: " << rowsA << "*" << colsB << std::endl;
-        std::cout << "The result is written to the file: " << resultFile << std::endl;
+        for (size_t i = 0; i < files.size(); i++)
+        {
+            std::string fileA = files[i].first;
+            std::string fileB = files[i].second;
+            std::string resultFile = "../../Output/output_" + std::to_string((i + 1) * 10) + ".txt";
+
+            auto matrixA = readMatrix(fileA, rowsA, colsA);
+            auto matrixB = readMatrix(fileB, rowsB, colsB);
+
+            if (colsA != rowsB)
+                throw std::runtime_error("Matrices cannot be multiplied: colsA != rowsB");
+
+            auto start = std::chrono::high_resolution_clock::now();
+            auto result = multiplyMatrices(matrixA, matrixB, rowsA, colsA, colsB);
+            auto end = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+            total_time += duration;
+
+            writeMatrix(resultFile, result);
+
+            std::cout << "Lead time for " << fileA << " and " << fileB << ": " << duration << " us" << std::endl;
+            std::cout << "Task volume: " << rowsA << " * " << colsB << std::endl;
+            std::cout << "The result is written to the file: " << resultFile << std::endl;
+        }
+
+        std::cout << "Total lead time: " << total_time << " us" << std::endl;
     }
     catch(const std::exception& ex)
     {
-        std::cerr << "Error:" << ex.what() << std::endl;
+        std::cerr << "Error: " << ex.what() << std::endl;
         return -1; 
     }
     return 0;
