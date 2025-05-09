@@ -5,9 +5,9 @@ project(MatrixMultiplyMPI CXX)
 find_package(MPI REQUIRED)
 
 
-add_executable(matrix_multiply_mpi main.cc)
+add_executable(lab3 main.cc)
 
-target_include_directories(matrix_multiply_mpi PRIVATE ${MPI_CXX_INCLUDE_DIRS})
-target_link_libraries(matrix_multiply_mpi PRIVATE ${MPI_CXX_LIBRARIES})
+target_include_directories(lab3 PRIVATE ${MPI_CXX_INCLUDE_DIRS})
+target_link_libraries(lab3 PRIVATE ${MPI_CXX_LIBRARIES})
 
-target_compile_options(matrix_multiply_mpi PRIVATE ${MPI_CXX_COMPILE_OPTIONS})
+target_compile_options(lab3 PRIVATE ${MPI_CXX_COMPILE_OPTIONS})
