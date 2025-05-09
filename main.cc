@@ -5,9 +5,7 @@
 #include <chrono>
 #include <stdexcept>
 #include <string>
-#include <omp.h>
-
-
+#include <mpi.h>
 
 std::vector<std::vector<float>> readMatrix(const std::string& filename, size_t& rows, size_t& cols) 
 {
@@ -51,26 +49,6 @@ std::vector<std::vector<float>> readMatrix(const std::string& filename, size_t& 
     return matrix;
 }
 
-
-std::vector<std::vector<float>> multiplyMatrices(const std::vector<std::vector<float>>& A,
-    const std::vector<std::vector<float>>& B, size_t rowsA, size_t colsA, size_t colsB)
-{
-    std::vector<std::vector<float>> result(rowsA, std::vector<float>(colsB, 0.0f));
-    #pragma omp for collapce(2)
-    for (size_t i = 0; i < rowsA; i++)
-    {
-        for (size_t j = 0; j < colsB; j++)
-        {
-            for (size_t k = 0; k < colsA; k++)
-            {
-                result[i][j] += A[i][k] * B[k][j];
-            }
-        }
-    }
-    return result;
-}
-
-
 void writeMatrix(const std::string& filename, const std::vector<std::vector<float>>& matrix) 
 {
     std::ofstream file(filename);
@@ -79,21 +57,63 @@ void writeMatrix(const std::string& filename, const std::vector<std::vector<floa
 
     for (const auto& row : matrix) 
     {
-        for (float val : row)
+        for (float val : row) 
             file << val << " ";
         file << "\n";
     }
     file.close();
 }
 
-
-int main()
+std::chrono::duration<double> parallelMatrixMultiply(
+    const std::vector<std::vector<float>>& A,
+    const std::vector<std::vector<float>>& B,
+    std::vector<std::vector<float>>& result,
+    size_t rowsA, size_t colsA, size_t colsB,
+    int rank, int size)
 {
-    try
-    {
-        long total_time = 0;
-        size_t rowsA, colsA = 0, rowsB, colsB = 0;
+    result.resize(rowsA, std::vector<float>(colsB, 0.0f));
+    auto start = std::chrono::high_resolution_clock::now();
 
+    size_t rowsPerProcess = rowsA / size;
+    size_t startRow = rank * rowsPerProcess;
+    size_t endRow = (rank == size - 1) ? rowsA : startRow + rowsPerProcess;
+
+    for (size_t i = startRow; i < endRow; i++)
+        for (size_t j = 0; j < colsB; j++)
+            for (size_t k = 0; k < colsA; k++)
+                result[i][j] += A[i][k] * B[k][j];
+    
+
+    if (rank != 0) 
+    {
+        for (size_t i = startRow; i < endRow; i++) 
+            MPI_Send(result[i].data(), colsB, MPI_FLOAT, 0, 0, MPI_COMM_WORLD);
+    } 
+    else 
+    {
+        for (int proc = 1; proc < size; proc++) 
+        {
+            size_t procStart = proc * rowsPerProcess;
+            size_t procEnd = (proc == size - 1) ? rowsA : procStart + rowsPerProcess;
+            for (size_t i = procStart; i < procEnd; ++i)
+                MPI_Recv(result[i].data(), colsB, MPI_FLOAT, proc, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        }
+    }
+
+    auto end = std::chrono::high_resolution_clock::now();
+    return end - start;
+}
+
+int main(int argc, char** argv)
+{
+    MPI_Init(&argc, &argv);
+
+    int rank, size;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    try {
+        double totalTime = 0.0;
         std::vector<std::pair<std::string, std::string>> files = {
             {"../../Matrix_1/matrix1_10.txt", "../../Matrix_2/matrix2_10.txt"},
             {"../../Matrix_1/matrix1_20.txt", "../../Matrix_2/matrix2_20.txt"},
@@ -108,40 +128,77 @@ int main()
             {"../../Matrix_1/matrix1_1000.txt", "../../Matrix_2/matrix2_1000.txt"}
         };
 
-        omp_set_num_threads(omp_get_num_threads());
-
-        for (size_t i = 0; i < files.size(); i++)
-        {
+        for (size_t i = 0; i < files.size(); ++i) {
             std::string fileA = files[i].first;
             std::string fileB = files[i].second;
             std::string resultFile = "../../Output/output_" + std::to_string((i + 1) * 10) + ".txt";
 
-            auto matrixA = readMatrix(fileA, rowsA, colsA);
-            auto matrixB = readMatrix(fileB, rowsB, colsB);
+            size_t rowsA, colsA = 0, rowsB, colsB = 0;
+            std::vector<std::vector<float>> matrixA, matrixB, result;
 
-            if (colsA != rowsB)
-                throw std::runtime_error("Matrices cannot be multiplied: colsA != rowsB");
+            if (rank == 0) {
+                matrixA = readMatrix(fileA, rowsA, colsA);
+                matrixB = readMatrix(fileB, rowsB, colsB);
+                if (colsA != rowsB) {
+                    throw std::runtime_error("Matrices cannot be multiplied: colsA != rowsB");
+                }
+            }
 
-            auto start = std::chrono::high_resolution_clock::now();
-            auto result = multiplyMatrices(matrixA, matrixB, rowsA, colsA, colsB);
-            auto end = std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
-            total_time += duration;
+            MPI_Bcast(&rowsA, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+            MPI_Bcast(&colsA, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+            MPI_Bcast(&rowsB, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+            MPI_Bcast(&colsB, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
 
-            writeMatrix(resultFile, result);
+            if (rank != 0) 
+            {
+                matrixA.resize(rowsA, std::vector<float>(colsA));
+                matrixB.resize(rowsB, std::vector<float>(colsB));
+            }
 
-            std::cout << "Lead time for " << fileA << " and " << fileB << ": " << duration << " us" << std::endl;
-            std::cout << "Task volume: " << rowsA << " * " << colsB << std::endl;
-            std::cout << "The result is written to the file: " << resultFile << std::endl;
-            std::cout << "Number of threads used: " << omp_get_max_threads() << std::endl;
+            for (size_t r = 0; r < rowsA; ++r)
+                MPI_Bcast(matrixA[r].data(), colsA, MPI_FLOAT, 0, MPI_COMM_WORLD);
+    
+
+            for (size_t r = 0; r < rowsB; ++r)
+                MPI_Bcast(matrixB[r].data(), colsB, MPI_FLOAT, 0, MPI_COMM_WORLD);
+            
+
+            MPI_Barrier(MPI_COMM_WORLD);
+
+            auto duration = parallelMatrixMultiply(matrixA, matrixB, result, rowsA, colsA, colsB, rank, size);
+            double localTime = duration.count();
+            double allTimeMul;
+
+            MPI_Reduce(&localTime, &allTimeMul, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+            totalTime += allTimeMul;
+
+            if (rank == 0) 
+            {
+                writeMatrix(resultFile, result);
+                std::cout << "Lead time for " << fileA << " and " << fileB << ": " 
+                          << std::chrono::duration_cast<std::chrono::microseconds>
+                          (std::chrono::duration<double>(allTimeMul)).count() 
+                          << " us" << std::endl;
+                std::cout << "Task volume: " << rowsA << " * " << colsB << std::endl;
+                std::cout << "The result is written to the file: " << resultFile << std::endl;
+            }
+
+            MPI_Barrier(MPI_COMM_WORLD);
         }
 
-        std::cout << "Total lead time: " << total_time << " us" << std::endl;
+        if (rank == 0)
+            std::cout << "Total lead time: " 
+                      << std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(totalTime)).count() 
+                      << " us" << std::endl;
     }
-    catch(const std::exception& ex)
+    catch (const std::exception& ex) 
     {
-        std::cerr << "Error: " << ex.what() << std::endl;
-        return -1; 
+        if (rank == 0)
+            std::cerr << "Error: " << ex.what() << std::endl;
+        MPI_Finalize();
+        return -1;
     }
+
+    MPI_Finalize();
     return 0;
 }
