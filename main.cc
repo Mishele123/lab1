@@ -111,7 +111,7 @@ int main(int argc, char** argv)
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-
+    std::cout << "Size = " << size << std::endl;
     try {
         double totalTime = 0.0;
         std::vector<std::pair<std::string, std::string>> files = {
