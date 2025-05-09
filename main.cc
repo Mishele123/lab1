@@ -5,6 +5,7 @@
 #include <chrono>
 #include <stdexcept>
 #include <string>
+#include <omp.h>
 
 
 
@@ -55,6 +56,7 @@ std::vector<std::vector<float>> multiplyMatrices(const std::vector<std::vector<f
     const std::vector<std::vector<float>>& B, size_t rowsA, size_t colsA, size_t colsB)
 {
     std::vector<std::vector<float>> result(rowsA, std::vector<float>(colsB, 0.0f));
+    #pragma omp for collapce(2)
     for (size_t i = 0; i < rowsA; i++)
     {
         for (size_t j = 0; j < colsB; j++)
@@ -106,6 +108,8 @@ int main()
             {"../../Matrix_1/matrix1_1000.txt", "../../Matrix_2/matrix2_1000.txt"}
         };
 
+        omp_set_num_threads(omp_get_num_threads());
+
         for (size_t i = 0; i < files.size(); i++)
         {
             std::string fileA = files[i].first;
@@ -129,6 +133,7 @@ int main()
             std::cout << "Lead time for " << fileA << " and " << fileB << ": " << duration << " us" << std::endl;
             std::cout << "Task volume: " << rowsA << " * " << colsB << std::endl;
             std::cout << "The result is written to the file: " << resultFile << std::endl;
+            std::cout << "Number of threads used: " << omp_get_max_threads() << std::endl;
         }
 
         std::cout << "Total lead time: " << total_time << " us" << std::endl;
