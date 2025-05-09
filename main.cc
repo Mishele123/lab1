@@ -111,7 +111,7 @@ int main(int argc, char** argv)
     int rank, size;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-    std::cout << size << std::endl;
+
     try {
         double totalTime = 0.0;
         std::vector<std::pair<std::string, std::string>> files = {
@@ -128,18 +128,20 @@ int main(int argc, char** argv)
             {"../../Matrix_1/matrix1_1000.txt", "../../Matrix_2/matrix2_1000.txt"}
         };
 
-        for (size_t i = 0; i < files.size(); i++) {
+        for (size_t i = 0; i < files.size(); i++) 
+        {
             std::string fileA = files[i].first;
             std::string fileB = files[i].second;
             std::string resultFile = "../../Output/output_" + std::to_string((i + 1) * 10) + ".txt";
 
-            size_t rowsA, colsA = 0, rowsB, colsB = 0;
+            size_t rowsA = 0, colsA = 0, rowsB = 0, colsB = 0;
             std::vector<std::vector<float>> matrixA, matrixB, result;
 
             if (rank == 0) {
                 matrixA = readMatrix(fileA, rowsA, colsA);
                 matrixB = readMatrix(fileB, rowsB, colsB);
-                if (colsA != rowsB) {
+                if (colsA != rowsB) 
+                {
                     throw std::runtime_error("Matrices cannot be multiplied: colsA != rowsB");
                 }
             }
