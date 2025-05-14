@@ -1,13 +1,17 @@
-cmake_minimum_required(VERSION 3.10)
-project(MatrixMultiplyMPI CXX)
+cmake_minimum_required(VERSION 3.18)
+project(MatrixMultiplicationCUDA LANGUAGES CXX CUDA)
+
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+enable_language(CUDA)
+
+add_executable(matrix_multiply_cuda main.cu)
 
 
-find_package(MPI REQUIRED)
+set_target_properties(matrix_multiply_cuda PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+)
 
 
-add_executable(lab3 main.cc)
-
-target_include_directories(lab3 PRIVATE ${MPI_CXX_INCLUDE_DIRS})
-target_link_libraries(lab3 PRIVATE ${MPI_CXX_LIBRARIES})
-
-target_compile_options(lab3 PRIVATE ${MPI_CXX_COMPILE_OPTIONS})
+set_target_properties(matrix_multiply_cuda PROPERTIES CUDA_STANDARD 14 CUDA_STANDARD_REQUIRED ON)
